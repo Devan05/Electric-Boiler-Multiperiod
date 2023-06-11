@@ -179,11 +179,11 @@ def c(x, p):
 con_list += [c]
 
 #def c(x, p):
-    '''
-    CONSTRAINT GOES HERE 
-    New invetsment Cost of electric boiler based on capacity installed perviously and learning rate
-    Complex...due to clustering of electric boiler capacity 
-    '''
+    # '''
+    # CONSTRAINT GOES HERE 
+    # New invetsment Cost of electric boiler based on capacity installed perviously and learning rate
+    # Complex...due to clustering of electric boiler capacity 
+    # '''
     # name of boiler at index i
     #boiler_energy_total = [p[boiler_names[j] + ": Thermal Energy required from fuel (MJ/year)"]/(1000*p["Hydrogen LHV (MJ/kg)"]) for j in range(boilers)]
     #A = p['A0'] + sum([x[boiler_names[j]+ ": Market Share"]  for j in range(boilers)]) * sum(boiler_energy_total)
