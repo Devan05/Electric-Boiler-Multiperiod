@@ -176,9 +176,7 @@ def c(x, p):
 
 # this adds constraints for indexes to the list
 # ... don't touch!
-for i in range(boilers):
-    c = make_c(i)
-    con_list += [c]
+con_list += [c]
 
 #def c(x, p):
     '''
