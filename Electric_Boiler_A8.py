@@ -320,7 +320,6 @@ enom = time.time()
 #     e_s = time.time()
 #     spt.append(e_s - s_s)
 
-
 #     robust = True
 #     mcv = 0 
 #     for i in range(len(res)):
