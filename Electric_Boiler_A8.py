@@ -208,7 +208,6 @@ def c5(x, x_bin, p):
     return (B3) - 0.082
 con_list = con_list + [c5]
 
-
 def c6(x, x_bin, p): 
     '''
     OBJECTIVE CONSTRAINT GOES HERE:
