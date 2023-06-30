@@ -67,28 +67,32 @@ data = pd.read_csv(data_path,nrows=instance_number)
 boiler_names = data['Technology'].values
 boiler_energy_required = data['Gas Consumption (MWh/yr)'].values
 boilers = len(boiler_names)
-print("boiler:")
-print(boilers)
 
 for i in range(boilers):
     p[boiler_names[i] + ": Gas Consumption (MWh/year)"] = {
-        "val": boiler_energy_required[i],'unc': boiler_energy_required[i] * 0.05
+        "val": boiler_energy_required[i], 'unc': boiler_energy_required[i] * 0.05
     }
 
-x = {} # create empty dictionary to store dicision variable x 
-x_bin = {}
-x_bin["t"] = [-1e20, 1e20] # t can be any real number 
+x = {
+    ": Gas Tax (£/yr)": [0, 0.2],
+    ": Electricity Subsidy (£/MWh)": [0, 70],
+    ": Carbon Tax (£/yr)": [0, 300],
+    ": Annual Grant (%/100)": [0, 0.5],
+}
 x["t"] = [-1e20, 1e20]
 
 
-x[": Gas Tax (£/yr)"] = [0, 0.2]
-x[": Electricity Subsidy (£/MWh)"] = [0, 100]
-x[": Carbon Tax (£/yr)"] = [0, 378]
-x[": Annual Grant (%/100)"] = [0, 0.5]
+x_bin = {"t": [0, 1]}
+
+#x = {} # create empty dictionary to store dicision variable x 
+#x_bin = {}
+x_bin["t"] = [-1e20, 1e20] # t can be any real number 
+#x["t"] = [-1e20, 1e20]
+
 for boiler in boiler_names:
     x_bin[boiler + "bv"] = [0, 1] 
-# for boiler in boiler_names: #Loops adds decision varaible for each oiler to assign a market share 
-#     x[boiler + ": Market Share"] = [0, 1] 
+for boiler in boiler_names: #Loops adds decision varaible for each boiler to assign a market share 
+    x[boiler + ": Market Share"] = [0, 1]
 
 con_list = []
 
@@ -120,15 +124,13 @@ def make_c1(i):
         
         ACOHe = (ACHe2 - FiTe + CTaxe - Grant)
         ACOHg = (ACHg2 + CTaxg + Taxg )
-        #print("ACOHe - ACOHg:")
-        #print(ACOHe - ACOHg)
         return ACOHe - ACOHg
     return c1
 for i in range(boilers):
     c11 = make_c1(i)
     con_list = con_list + [c11]
 
-def c2(x, x_bin, p): #take two argument x and p
+def c2(x, x_bin, p):
     #boiler = boiler_names[i]
     VOMg = [p[boiler_names[j] + ": Gas Consumption (MWh/year)"] * p["Natural Gas Price with CCL (£/MWh)"]  for j in range(boilers)]
     boiler_capacity_electric = [(p[boiler_names[j] + ": Gas Consumption (MWh/year)"] * p["Natural Gas Boiler Efficiency"])/(p["Operating Hours (h)"] * p["Electric Boiler Availability"]) for j in range(boilers)]
@@ -144,8 +146,9 @@ def c2(x, x_bin, p): #take two argument x and p
     BV = [x_bin[boiler_names[j] + "bv"] for j in range(boilers)]
 
     Cost1g = [((bv * ((bv * fite) - (bv * ctaxe) - ((1-bv) * ctaxg) - ((1-bv) * taxg))) + (bv * grant)) for fite, ctaxe, bv, ctaxg, taxg, grant in zip(FiTe, CTaxe, BV, CTaxg, Taxg, Grant)]
-    SumFTCg = sum(Cost1g) - 1000000
-    return SumFTCg
+    SumFTCg = sum(Cost1g)
+    return SumFTCg - 1000000
+
 con_list = con_list + [c2]
 
 def c3(x, x_bin, p):
@@ -174,38 +177,39 @@ def c3(x, x_bin, p):
 
     Cost1i = [(bv* ((bv * ctaxe) + bv*(ache2 - fite - grant - achg2) + ((1 - bv) * ctaxg) + ((1 - bv) * taxg))) for ctaxe, ache2, fite, grant, achg2, bv, ctaxg, taxg in zip(CTaxe, ACHe2, FiTe, Grant, ACHg2, BV, CTaxg, Taxg)]  
     SumFTCi = sum(Cost1i)
-    return SumFTCi - 1000000
+    return SumFTCi - 500000
 
 con_list = con_list + [c3]
 
-# def make_c(i):
-#     def c(x, x_bin, p):
-#         '''
-#         CONSTRAINT GOES HERE (Constraint 2)
-#         '''
-#         # name of boiler at index i
-#         boiler = boiler_names[i]
-#         boiler_energy_total = [p[boiler_names[j] + ": Gas Consumption (MWh/year)"] * (p["Natural Gas Boiler Efficiency"]) for j in range(boilers)]
-#         B = x[boiler + ": Market Share"] - boiler_energy_total[i] / sum(boiler_energy_total)
-#         return x[boiler + ": Market Share"] - boiler_energy_total[i] / sum(boiler_energy_total)
-#     return c
+def make_c4(i):
+    def c4(x, x_bin, p):
+        # name of boiler at index i
+        boiler = boiler_names[i]
+        #BV = x_bin[boiler+ "bv"]
+        boiler_energy_total = [p[boiler_names[j] + ": Gas Consumption (MWh/year)"] * (p["Natural Gas Boiler Efficiency"]) for j in range(boilers)]
+        D1 = (x[boiler + ": Market Share"] - boiler_energy_total[i] / sum(boiler_energy_total))
+        D2 = x_bin[boiler+ "bv"]
+        #B = x_bin[boiler+ "bv"]*(x[boiler + ": Market Share"] - boiler_energy_total[i] / sum(boiler_energy_total))
+        return D1 * D2 
+    return c4
 
-# # this adds constraints for indexes to the list
-# # ... don't touch!
-# for i in range(boilers):
-#     c = make_c(i)
-#     con_list += [c]
+for i in range(boilers):
+    c44 = make_c4(i)
+    con_list += [c44]
 
-def c4(x, x_bin, p):
+def c5(x, x_bin, p):
     boiler_energy_total = [p[boiler_names[j] + ": Gas Consumption (MWh/year)"] * (p["Natural Gas Boiler Efficiency"]) for j in range(boilers)]
     NMS2 = [boiler_energy_total[j] / sum(boiler_energy_total) for j in range(boilers)]
     BV = [x_bin[boiler_names[j]+ "bv"] for j in range(boilers)]
     B3 = sum([nms2 * bv for nms2, bv in zip(NMS2, BV)])
-    return (B3) - 0.15
-con_list = con_list + [c4]
+    # TotalNMS = [x[boiler_names[j]+ ": Market Share"]  for j in range(boilers)]
+    # BV = [x_bin[boiler_names[j]+ "bv"] for j in range(boilers)]
+    # B5 = sum([nms3 * bv for nms3, bv in zip(TotalNMS, BV)])
+    return (B3) - 0.082
+con_list = con_list + [c5]
 
 
-def c5(x, x_bin, p): 
+def c6(x, x_bin, p): 
     '''
     OBJECTIVE CONSTRAINT GOES HERE:
     Maximize the the market share of electric  
@@ -213,15 +217,17 @@ def c5(x, x_bin, p):
     If you want to know why look up 'epigraph form' 
     of an uncertain optimisation problem
     '''
-    boiler_energy_total = [p[boiler_names[j] + ": Gas Consumption (MWh/year)"] * (p["Natural Gas Boiler Efficiency"]) for j in range(boilers)]    
-    MS = [x_bin[boiler_names[j]+ "bv"] * boiler_energy_total[j] / sum(boiler_energy_total) for j in range(boilers)]
-    TotalB = sum(MS)
-    return x_bin['t'] - (TotalB)
-con_list = con_list + [c5]
+    #boiler_energy_total = [p[boiler_names[j] + ": Gas Consumption (MWh/year)"] * (p["Natural Gas Boiler Efficiency"]) for j in range(boilers)]    
+    #MS = [x_bin[boiler_names[j]+ "bv"] * boiler_energy_total[j] / sum(boiler_energy_total) for j in range(boilers)]
+    TotalNMS = [x[boiler_names[j]+ ": Market Share"]  for j in range(boilers)]
+    BV = [x_bin[boiler_names[j]+ "bv"] for j in range(boilers)]
+    B4 = sum([nms3 * bv for nms3, bv in zip(TotalNMS, BV)])
+    return x['t'] - (B4)
+con_list = con_list + [c6]
 
 
-def obj(x_bin):
-    return -x_bin['t']
+def obj(x):
+    return -x['t']
 
 def var_bounds(m, i):
      return (x[i][0], x[i][1])
@@ -231,7 +237,7 @@ def uncertain_bounds(m, i):
     return (p[i]["val"] - p[i]["unc"], p[i]["val"] + p[i]["unc"])
 
 snom = time.time()
-solver = "bonmin"
+#solver = "bonmin"
 m_upper = ConcreteModel()
 m_upper.x = Set(initialize=x.keys())
 m_upper.x_bin = Set(initialize=x_bin.keys(),)
@@ -246,9 +252,11 @@ m_upper.cons = ConstraintList()
 for con in con_list:
     m_upper.cons.add(expr=con(m_upper.x_v, m_upper.x_bin_v, p_nominal) <= 0)
 
-m_upper.obj = Objective(expr=obj(m_upper.x_bin_v), sense=minimize)
+m_upper.obj = Objective(expr=obj(m_upper.x_v), sense=minimize)
 #m_upper.pprint()
-res = SolverFactory(solver).solve(m_upper)
+res=SolverFactory('mindtpy').solve(m_upper, mip_solver='glpk', nlp_solver='ipopt') 
+
+#res = SolverFactory(solver).solve(m_upper)
 print("res start")
 print(res)
 print("res end")
