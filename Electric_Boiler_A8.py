@@ -67,11 +67,22 @@ data = pd.read_csv(data_path,nrows=instance_number)
 boiler_names = data['Technology'].values
 boiler_energy_required = data['Gas Consumption (MWh/yr)'].values
 boilers = len(boiler_names)
-
+# iteratively create parameters from the list of energies imported earlier
 for i in range(boilers):
     p[boiler_names[i] + ": Gas Consumption (MWh/year)"] = {
         "val": boiler_energy_required[i], 'unc': boiler_energy_required[i] * 0.05
     }
+# iteratively define the uncertainty to be a percentage, or just keep 
+# the value if it already exists
+for k, v in p.items(): #k = each key-value pair, in dictionary p. items() to iterate over each key-value pair in p, and for each iteration, the key is assigned to the variable k and the corresponding value is assigned to the variable v. 
+    try:
+         # Check if the key already has an uncertainty value
+        key_test = p[k]['unc']
+    except KeyError:  # If the key doesn't have an uncertainty value, calculate it as a percentage of the key's value and add it to the dictionary
+        p[k]["unc"] = p[k]["val"] * percentage_uncertainty / 100
+        # If all_percentage is True, overwrite any existing uncertainty values with the percentage value
+    if all_percentage is True:
+        p[k]["unc"] = p[k]["val"] * percentage_uncertainty / 100
 
 x = {
     ": Gas Tax (£/yr)": [0, 0.2],
@@ -94,6 +105,7 @@ for boiler in boiler_names:
 for boiler in boiler_names: #Loops adds decision varaible for each boiler to assign a market share 
     x[boiler + ": Market Share"] = [0, 1]
 
+# this is needed to store all constraints
 con_list = []
 
 def make_c1(i):
@@ -224,6 +236,12 @@ def c6(x, x_bin, p):
     return x['t'] - (B4)
 con_list = con_list + [c6]
 
+'''
+The objective function obj is defined as the negative of the t variable, 
+and the var_bounds function provides the variable bounds for each variable in x. 
+The uncertain_bounds function provides the bounds for the uncertain parameter p 
+for each constraint in the con_list.
+'''
 
 def obj(x):
     return -x['t']
@@ -234,6 +252,12 @@ def var_bounds(m, i):
 #nominal values minus uncertain parameters
 def uncertain_bounds(m, i):
     return (p[i]["val"] - p[i]["unc"], p[i]["val"] + p[i]["unc"])
+
+'''
+The uncertain parameters p are used in the ConstraintList to define the constraints. 
+The constraints are added to the model by calling the add method of m_upper.cons with each constraint expression. 
+The objective function obj is added to the model as the obj attribute of m_upper.
+'''
 
 snom = time.time()
 #solver = "bonmin"
