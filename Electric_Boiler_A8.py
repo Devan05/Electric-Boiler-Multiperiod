@@ -74,6 +74,9 @@ for i in range(boilers):
     }
 # iteratively define the uncertainty to be a percentage, or just keep 
 # the value if it already exists
+percentage_uncertainty = 5
+all_percentage = False
+
 for k, v in p.items(): #k = each key-value pair, in dictionary p. items() to iterate over each key-value pair in p, and for each iteration, the key is assigned to the variable k and the corresponding value is assigned to the variable v. 
     try:
          # Check if the key already has an uncertainty value
