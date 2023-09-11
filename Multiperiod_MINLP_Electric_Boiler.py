@@ -49,42 +49,39 @@ boiler_energy_required = data['Gas Consumption (MWh/yr)'].values
 boilers = len(boiler_names)
 percentage_uncertainty = 0.01
 
-Total_Cost_Bound = 150000000
-Target_MS = 0.5
-Period = 1
-# cluster_factors = {'Cluster_1': 0.7898399542794716*0.9659363289248456*0.9465508226401592, 'Cluster_5': 0.7822094430678808*0.837137116364921*0.8223401594268891*0.8567988323372042*0.8705505632961241*0.9072878561917624*0.9465508226401592,
-#                    'Cluster_9': 0.8348143654846168*0.9072878561917624, 'Cluster_15': 0.8796356706393289*0.9330329915368074*0.9330329915368074, 'Cluster_30': 0.9226808345905884*0.9330329915368074, 'Cluster_60': 0.8959584598407622*0.8831631456895738*0.9659363289248456*0.9465508226401592}
+
+
+#S-cureve over a 10 year period will follow 0% 1%	5%	14%	30%	50%	70%	86%	95%	99%	100% Target_MS
+#Linear over 10 year period follows 0% 10% 20% ... 100% 
+Target_MS = 0.1
+# period goes from 1 to 10 [1,2,3,4,5,6,7,8,9,10]
+Period = 5
+#Initial cluster factor for cost reduction, fraction decreases after each period
 cluster_factors = {'Cluster_1':1, 'Cluster_5': 1,
                    'Cluster_9': 1, 'Cluster_15': 1, 'Cluster_30': 1, 'Cluster_60': 1}
 Attempt = 1
-
-#1%	5%	14%	30%	50%	70%	86%	95%	99%	100%
-#0.1	0.2	0.3	0.4	0.5	0.6	0.7	0.8	0.9	1
-
-
+Total_Cost_Bound = 150000000
 x = {
     ": Gas Tax (£/yr)": [0, 0.2],
     ": Electricity Subsidy (£/MWh)": [0, 100],
     ": Carbon Tax (£/tCO2e)": [0, 378],
     ": Annual Grant (%/100)": [0, 0.5],
-    ": diff": [0, 150000],
+    #": diff": [0, 150000],
 }
 x["t"] = [-1e20, 1e20]
 x_bin = {}
-# times = [1,2,3,4,5]
-# for t in times:
-#     for boiler in boiler_names:
-#         x_bin[boiler + " bv" + str(t)] = [0, 1]
+
+
 for boiler in boiler_names:
     x_bin[boiler + " bv"] = [0, 1]
 
-#start period 2023? 
-Projected_e_values = [130, 121, 124,	131, 131, 128, 128,	128, 130, 130, 125, 125, 125, 114]
+
+Projected_e_values = [130, 121, 124, 131, 131, 128, 128,	128, 130, 130, 125, 125, 125, 114]
 Projected_g_values = [29, 31, 32, 33, 34, 35, 36, 36, 36, 36, 36, 36]
 Projected_e_emissions = [0.146, 0.127, 0.095, 0.07, 0.061, 0.052, 0.048, 0.04, 0.032, 0.025, 0.02, 0.019]
 Carbon_price = [256,260,264,268,272,276,280,285,289,293,298,302]
 Bell_Shape = [0.01,	0.04, 0.09,	0.16, 0.2, 0.2,	0.16, 0.09, 0.04, 0.01]
-Years = [2024, 2025, 2026, 2027, 2028,	2029, 2030,	2031, 2032,	2033, 2034]
+Years = [2024, 2025, 2026, 2027, 2028, 2029, 2030, 2031, 2032,	2033, 2034]
 
 period_to_value_e = {period: value for period, value in enumerate(Projected_e_values, start=1)}
 period_to_value_g = {period: value for period, value in enumerate(Projected_g_values, start=1)}
@@ -139,7 +136,6 @@ for k, v in p.items(): #k = each key-value pair, in dictionary p. items() to ite
         # If all_percentage is True, overwrite any existing uncertainty values with the percentage value
     if all_percentage is True:
         p[k]["unc"] = p[k]["val"] * percentage_uncertainty / 100
-
 
 
 con_list = []
@@ -234,8 +230,8 @@ def make_c1(i):
         
         ACOHe = (ACHe2 - FiTe + CTaxe - Grant)
         ACOHg = (ACHg2 + CTaxg + Taxg)
-        #x[": ACOHe_ACOHg"]
-        return ((-((ACOHe)-(ACOHg))) - x[": diff"])
+        #x[": ACOHe_ACOHg"]x[": diff"]
+        return ((-((ACOHe)-(ACOHg))) - 150000)
     return c1
 for i in range(boilers):
     c11 = make_c1(i)
@@ -340,7 +336,7 @@ def c6(x, x_bin, p):
     MS = [x_bin[boiler_names[j]+ " bv"] *boiler_energy_total[j] / sum(boiler_energy_total) for j in range(boilers)]
     BV = [x_bin[boiler_names[j]+ " bv"] for j in range(boilers)]
     B4 = sum([nms3 * bv for nms3, bv in zip(MS, BV)])
-    return x['t'] - (B4)
+    return x['t'] - (B4) 
 con_list = con_list + [c6]
 
 def create_multi_period_model(num_periods, x, x_bin, p):
